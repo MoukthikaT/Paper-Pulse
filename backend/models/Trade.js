@@ -45,6 +45,38 @@ const tradeSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  journalNotes: {
+    type: String,
+    default: ''
+  },
+  strategyTag: {
+    type: String,
+    enum: ['Momentum', 'Trend', 'Fundamental', 'AI Signal', 'Experiment', 'Discretionary', 'Other'],
+    default: 'Discretionary'
+  },
+  confidenceLevel: {
+    type: Number,
+    min: 1,
+    max: 5,
+    default: 3
+  },
+  expectedOutcome: {
+    type: String,
+    enum: ['Bullish', 'Neutral', 'Bearish'],
+    default: 'Bullish'
+  },
+  reflectionNotes: {
+    type: String,
+    default: ''
+  },
+  aiConfidence: {
+    type: Number,
+    default: 0
+  },
+  aiSignal: {
+    type: String,
+    default: ''
+  },
   timestamp: {
     type: Date,
     default: Date.now

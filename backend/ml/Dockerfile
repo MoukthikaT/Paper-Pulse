@@ -1,0 +1,26 @@
+# PaperPulse FastAPI ML Microservice Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy ML application code, scripts, models, and datasets
+COPY . .
+# Also copy CSV datasets for feature generation
+COPY ../data/csv /app/../data/csv
+
+EXPOSE 8000
+
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
+ENV HOST=0.0.0.0
+
+CMD ["uvicorn", "api.ml_api:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const { connectDB } = require('./config/db');
+const { connectDB, isDbConnected } = require('./config/db');
 const helmet = require('helmet');
 const authRoutes = require('./routes/authRoutes');
 const tradeRoutes = require('./routes/tradeRoutes');
@@ -11,22 +11,47 @@ const walletRoutes = require('./routes/walletRoutes');
 const portfolioRoutes = require('./routes/portfolioRoutes');
 const stockRoutes = require('./routes/stockRoutes');
 const mlRoutes = require('./routes/mlRoutes');
+const journalRoutes = require('./routes/journalRoutes');
+const decisionLabRoutes = require('./routes/decisionLabRoutes');
 const explanationService = require('./services/explanationService');
+const authService = require('./services/authService');
 const errorHandler = require('./middleware/errorHandler');
 const { successResponse } = require('./utils/apiResponse');
+
+// Environment Validation: Fail fast if JWT_SECRET is missing or empty
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === '') {
+  console.error('ERROR: JWT_SECRET environment variable is required. Server startup aborted.');
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// CORS configuration supporting environment allowed origins
+const allowedOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS policy: origin ${origin} is not allowed.`));
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.static('public'));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/trades', tradeRoutes);
+app.use('/api/journal', journalRoutes);
+app.use('/api/decision-lab', decisionLabRoutes);
 app.use('/api/explanations', explanationRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/portfolio', portfolioRoutes);
@@ -34,10 +59,26 @@ app.use('/api/stocks', stockRoutes);
 app.use('/api/ml', mlRoutes);
 
 // Base Health Check Route
-app.get('/health', (req, res) => {
-  return successResponse(res, 200, 'Trading and Educational Backend service is running healthy', {
+app.get('/health', async (req, res) => {
+  const dbConnected = isDbConnected();
+  let mlServiceStatus = 'OFFLINE';
+  try {
+    const mlUrl = process.env.ML_SERVICE_URL || 'http://127.0.0.1:8000';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const mlHealthRes = await fetch(`${mlUrl}/health`, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (mlHealthRes.ok) {
+      mlServiceStatus = 'ONLINE';
+    }
+  } catch (e) {
+    mlServiceStatus = 'OFFLINE_FALLBACK_ACTIVE';
+  }
+
+  return successResponse(res, 200, 'PaperPulse Backend service is running healthy', {
     status: 'UP',
-    module: "Hasrith's Trading, Auth & Educational Backend",
+    database: dbConnected ? 'CONNECTED' : 'IN_MEMORY_FALLBACK',
+    mlService: mlServiceStatus,
     timestamp: new Date().toISOString()
   });
 });
@@ -67,6 +108,7 @@ const startServer = async () => {
   if (isDbConnected) {
     await explanationService.seedExplanationsIfEmpty();
   }
+  await authService.seedDemoUserIfEmpty();
 
   // Only start listening if run directly (not required by test suite)
   if (require.main === module) {

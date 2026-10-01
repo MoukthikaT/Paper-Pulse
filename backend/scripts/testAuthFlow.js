@@ -1,11 +1,15 @@
 const app = require('../server');
 const authService = require('../services/authService');
+const User = require('../models/User');
+const { connectDB, isDbConnected } = require('../config/db');
 const bcrypt = require('bcryptjs');
 
 async function runAuthTests() {
   console.log('\n================================================================');
   console.log(' RUNNING USER AUTHENTICATION TEST SUITE');
   console.log('================================================================\n');
+
+  await connectDB();
 
   const PORT = 5090;
   const server = app.listen(PORT, async () => {
@@ -26,6 +30,9 @@ async function runAuthTests() {
 
     try {
       authService.clearUsers();
+      if (isDbConnected()) {
+        await User.deleteMany({ email: 'hasrith@test.com' });
+      }
 
       // TEST 1 — REGISTER
       console.log('\n--- TEST 1: User Registration ---');
@@ -125,11 +132,16 @@ async function runAuthTests() {
 
       // TEST 8 — PASSWORD SECURITY CHECK
       console.log('\n--- TEST 8: Password Security & Bcrypt Hashing ---');
-      const inMemUser = authService.inMemoryUsers.get('hasrith@test.com');
-      assert(!!inMemUser, 'User found in repository');
-      assert(inMemUser.password !== 'password123', 'Password in storage is NOT plain-text "password123"');
-      assert(inMemUser.password.startsWith('$2a$') || inMemUser.password.startsWith('$2b$'), 'Password is valid bcrypt hash');
-      assert(await bcrypt.compare('password123', inMemUser.password), 'Bcrypt hash correctly matches "password123"');
+      let storedUser = null;
+      if (isDbConnected()) {
+        storedUser = await User.findOne({ email: 'hasrith@test.com' });
+      } else {
+        storedUser = authService.inMemoryUsers.get('hasrith@test.com');
+      }
+      assert(!!storedUser, 'User found in repository');
+      assert(storedUser.password !== 'password123', 'Password in storage is NOT plain-text "password123"');
+      assert(storedUser.password.startsWith('$2a$') || storedUser.password.startsWith('$2b$'), 'Password is valid bcrypt hash');
+      assert(await bcrypt.compare('password123', storedUser.password), 'Bcrypt hash correctly matches "password123"');
 
       console.log('\n================================================================');
       console.log(` ALL ${passedTests} OF ${totalTests} AUTHENTICATION TESTS PASSED SUCCESSFULLY!`);
@@ -139,7 +151,16 @@ async function runAuthTests() {
       console.error(`\n❌ Auth Test Failed: ${err.message}`);
       process.exitCode = 1;
     } finally {
+      if (isDbConnected()) {
+        try {
+          await User.deleteMany({ email: 'hasrith@test.com' });
+        } catch (e) {}
+      }
       server.close();
+      try {
+        await mongoose.connection.close();
+      } catch (e) {}
+      process.exit(process.exitCode || 0);
     }
   });
 }

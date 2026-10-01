@@ -31,11 +31,11 @@ class PortfolioService {
   /**
    * Get holding for a given symbol
    */
-  async getHolding(userId = 'default_user', symbol = '') {
+  async getHolding(userId = 'default_user', symbol = '', options = {}) {
     const cleanSymbol = symbol.trim().toUpperCase();
 
     if (isDbConnected()) {
-      const holding = await Portfolio.findOne({ userId, symbol: cleanSymbol });
+      const holding = await Portfolio.findOne({ userId, symbol: cleanSymbol }).session(options.session || null);
       return holding ? this._enrichHoldingWithCSVPrice(holding) : null;
     }
 
@@ -48,10 +48,10 @@ class PortfolioService {
   /**
    * Get all holdings for a user
    */
-  async getPortfolio(userId = 'default_user') {
+  async getPortfolio(userId = 'default_user', options = {}) {
     let finalHoldings = [];
     if (isDbConnected()) {
-      const holdings = await Portfolio.find({ userId });
+      const holdings = await Portfolio.find({ userId }).session(options.session || null);
       finalHoldings = holdings.map((holding) => this._enrichHoldingWithCSVPrice(holding));
     } else {
       // In-memory fallback
@@ -80,11 +80,11 @@ class PortfolioService {
   /**
    * Update portfolio after a BUY transaction
    */
-  async updateHoldingOnBuy(userId = 'default_user', symbol = '', quantity = 0, price = 0) {
+  async updateHoldingOnBuy(userId = 'default_user', symbol = '', quantity = 0, price = 0, options = {}) {
     const cleanSymbol = symbol.trim().toUpperCase();
 
     if (isDbConnected()) {
-      let holding = await Portfolio.findOne({ userId, symbol: cleanSymbol });
+      let holding = await Portfolio.findOne({ userId, symbol: cleanSymbol }).session(options.session || null);
       
       let updatedQuantity = quantity;
       let updatedAvgPrice = price;
@@ -98,15 +98,16 @@ class PortfolioService {
         holding.quantity = updatedQuantity;
         holding.averagePurchasePrice = Math.round(updatedAvgPrice * 100) / 100;
         holding.updatedAt = new Date();
-        await holding.save();
+        await holding.save({ session: options.session || null });
       } else {
-        holding = await Portfolio.create({
+        const created = await Portfolio.create([{
           userId,
           symbol: cleanSymbol,
           quantity: updatedQuantity,
           averagePurchasePrice: Math.round(updatedAvgPrice * 100) / 100,
           updatedAt: new Date()
-        });
+        }], { session: options.session || null });
+        holding = created[0];
       }
 
       return this._enrichHoldingWithCSVPrice(holding);
@@ -141,11 +142,11 @@ class PortfolioService {
   /**
    * Update portfolio after a SELL transaction
    */
-  async updateHoldingOnSell(userId = 'default_user', symbol = '', quantity = 0, sellPrice = 0) {
+  async updateHoldingOnSell(userId = 'default_user', symbol = '', quantity = 0, sellPrice = 0, options = {}) {
     const cleanSymbol = symbol.trim().toUpperCase();
 
     if (isDbConnected()) {
-      const holding = await Portfolio.findOne({ userId, symbol: cleanSymbol });
+      const holding = await Portfolio.findOne({ userId, symbol: cleanSymbol }).session(options.session || null);
       if (!holding || holding.quantity < quantity) {
         throw new Error(`Insufficient shares owned for ${cleanSymbol}. Owned: ${holding ? holding.quantity : 0}, Requested: ${quantity}`);
       }
@@ -157,11 +158,11 @@ class PortfolioService {
       let updatedHolding = null;
 
       if (remainingQuantity === 0) {
-        await Portfolio.deleteOne({ _id: holding._id });
+        await Portfolio.deleteOne({ _id: holding._id }).session(options.session || null);
       } else {
         holding.quantity = remainingQuantity;
         holding.updatedAt = new Date();
-        await holding.save();
+        await holding.save({ session: options.session || null });
         updatedHolding = this._enrichHoldingWithCSVPrice(holding);
       }
 

@@ -8,13 +8,15 @@
     "dev": "concurrently \"npm run dev:node\" \"npm run dev:ml\"",
     "dev:node": "node server.js",
     "dev:ml": ".\\ml\\.venv\\Scripts\\python.exe ml/api/ml_api.py",
-    "test": "node scripts/testFlow.js"
+    "test": "node scripts/testFlow.js && node scripts/testAuthFlow.js && node scripts/testTransactionAtomicity.js && node scripts/testCriticalUserJourney.js && node scripts/testE2EHttp.js",
+    "test:all": "node scripts/testFlow.js && node scripts/testAuthFlow.js && node scripts/testTransactionAtomicity.js && node scripts/testCriticalUserJourney.js && node scripts/testE2EHttp.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.7.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.4.1"

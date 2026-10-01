@@ -10,7 +10,7 @@ class TradeHistoryService {
   /**
    * Save a completed trade record
    */
-  async createTradeRecord(tradeData) {
+  async createTradeRecord(tradeData, options = {}) {
     const record = {
       userId: tradeData.userId || 'default_user',
       symbol: tradeData.symbol.toUpperCase(),
@@ -21,14 +21,22 @@ class TradeHistoryService {
       signal: tradeData.signal || tradeData.action || 'BUY',
       tradeType: tradeData.tradeType || 'MANUAL',
       profitLoss: Number(tradeData.profitLoss || 0),
+      journalNotes: tradeData.journalNotes || '',
+      strategyTag: tradeData.strategyTag || 'Discretionary',
+      confidenceLevel: Number(tradeData.confidenceLevel) || 3,
+      expectedOutcome: tradeData.expectedOutcome || 'Bullish',
+      reflectionNotes: tradeData.reflectionNotes || '',
+      aiConfidence: Number(tradeData.aiConfidence) || 0,
+      aiSignal: tradeData.aiSignal || '',
       timestamp: tradeData.timestamp ? new Date(tradeData.timestamp) : new Date()
     };
 
     if (isDbConnected()) {
       try {
-        const mongoTrade = await Trade.create(record);
-        return mongoTrade.toObject();
+        const created = await Trade.create([record], { session: options.session || null });
+        return created[0].toObject();
       } catch (err) {
+        if (options.session) throw err;
         console.warn(`[TradeHistoryService] MongoDB write error (${err.message}). Saving to in-memory store.`);
       }
     }
@@ -40,6 +48,39 @@ class TradeHistoryService {
     };
     this.inMemoryTrades.unshift(mockRecord);
     return mockRecord;
+  }
+
+  /**
+   * Update Trade Journal notes or reflection
+   */
+  async updateTradeJournal(tradeId, userId, { journalNotes, reflectionNotes, strategyTag, confidenceLevel, expectedOutcome }) {
+    const updates = {};
+    if (journalNotes !== undefined) updates.journalNotes = journalNotes;
+    if (reflectionNotes !== undefined) updates.reflectionNotes = reflectionNotes;
+    if (strategyTag !== undefined) updates.strategyTag = strategyTag;
+    if (confidenceLevel !== undefined) updates.confidenceLevel = Number(confidenceLevel);
+    if (expectedOutcome !== undefined) updates.expectedOutcome = expectedOutcome;
+
+    if (isDbConnected()) {
+      try {
+        const updated = await Trade.findOneAndUpdate(
+          { _id: tradeId, userId },
+          { $set: updates },
+          { new: true }
+        ).lean();
+        if (updated) return updated;
+      } catch (err) {
+        console.warn(`[TradeHistoryService] MongoDB update error: ${err.message}`);
+      }
+    }
+
+    // In-memory fallback
+    const index = this.inMemoryTrades.findIndex(t => (t._id === tradeId || String(t._id) === String(tradeId)) && t.userId === userId);
+    if (index !== -1) {
+      this.inMemoryTrades[index] = { ...this.inMemoryTrades[index], ...updates };
+      return this.inMemoryTrades[index];
+    }
+    return null;
   }
 
   /**

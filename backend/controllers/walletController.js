@@ -28,6 +28,23 @@ class WalletController {
       next(error);
     }
   }
+
+  /**
+   * POST /api/wallet/add-funds
+   */
+  async addFunds(req, res, next) {
+    try {
+      const userId = req.user.userId;
+      const amount = Number(req.body.amount) || 0;
+      if (amount <= 0) {
+        return errorResponse(res, 400, 'Deposit amount must be greater than zero');
+      }
+      const balance = await walletService.add(userId, amount);
+      return successResponse(res, 200, `Successfully added ₹${amount.toLocaleString('en-IN')} to virtual wallet!`, { balance });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new WalletController();

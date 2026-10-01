@@ -33,6 +33,24 @@ class ExplanationController {
       next(error);
     }
   }
+
+  /**
+   * POST /api/explanations/chat
+   * Interactive AI Financial Chatbot endpoint
+   */
+  async askAIChat(req, res, next) {
+    try {
+      const { query, context } = req.body;
+      if (!query || typeof query !== 'string' || query.trim() === '') {
+        return errorResponse(res, 400, 'Query string is required');
+      }
+
+      const response = await explanationService.processAIChatQuery(query, context);
+      return successResponse(res, 200, 'AI response generated successfully', response);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new ExplanationController();

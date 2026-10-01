@@ -143,7 +143,12 @@ class AuthService {
     }
 
     const userId = foundUser._id ? foundUser._id.toString() : foundUser.id;
-    const jwtSecret = process.env.JWT_SECRET || 'paper_pulse_jwt_secret_key_2026_antigravity';
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      const err = new Error('JWT_SECRET environment variable is required');
+      err.code = 'CONFIG_ERROR';
+      throw err;
+    }
     const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 
     const token = jwt.sign(
@@ -205,6 +210,50 @@ class AuthService {
   }
 
   /**
+   * Automatically seed a default demo trader account on startup
+   * Controlled explicitly via SEED_DEMO_USER environment variable.
+   */
+  async seedDemoUserIfEmpty() {
+    if (process.env.SEED_DEMO_USER !== 'true') {
+      return;
+    }
+
+    const demoEmail = 'trader@paperpulse.ai';
+    const demoPassword = 'PulsePass123!';
+    const demoName = 'Demo Trader';
+
+    try {
+      if (isDbConnected()) {
+        const existing = await User.findOne({ email: demoEmail });
+        if (!existing) {
+          const hashedPassword = await bcrypt.hash(demoPassword, 10);
+          await User.create({
+            name: demoName,
+            email: demoEmail,
+            password: hashedPassword
+          });
+          console.log(`[AuthService] Seeded default demo user: ${demoEmail}`);
+        }
+      } else {
+        if (!this.inMemoryUsers.has(demoEmail)) {
+          const hashedPassword = await bcrypt.hash(demoPassword, 10);
+          this.inMemoryUsers.set(demoEmail, {
+            _id: 'usr_demo_1001',
+            id: 'usr_demo_1001',
+            name: demoName,
+            email: demoEmail,
+            password: hashedPassword,
+            createdAt: new Date().toISOString()
+          });
+          console.log(`[AuthService] Seeded in-memory demo user: ${demoEmail}`);
+        }
+      }
+    } catch (err) {
+      console.warn(`[AuthService] Note on demo user seeding: ${err.message}`);
+    }
+  }
+
+  /**
    * Helper for testing: clear in-memory user map
    */
   clearUsers() {
@@ -213,3 +262,4 @@ class AuthService {
 }
 
 module.exports = new AuthService();
+

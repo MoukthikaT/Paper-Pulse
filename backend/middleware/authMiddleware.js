@@ -18,7 +18,10 @@ const authMiddleware = (req, res, next) => {
       return errorResponse(res, 401, 'Authentication token required', 'TOKEN_REQUIRED');
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'paper_pulse_jwt_secret_key_2026_antigravity';
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return errorResponse(res, 500, 'JWT_SECRET environment variable is required', 'CONFIG_ERROR');
+    }
 
     try {
       const decoded = jwt.verify(token, jwtSecret);
@@ -46,13 +49,15 @@ const optionalAuthMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization || req.headers.Authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
-      const jwtSecret = process.env.JWT_SECRET || 'paper_pulse_jwt_secret_key_2026_antigravity';
-      const decoded = jwt.verify(token, jwtSecret);
-      req.user = {
-        userId: decoded.userId || decoded.id,
-        email: decoded.email,
-        name: decoded.name
-      };
+      const jwtSecret = process.env.JWT_SECRET;
+      if (jwtSecret) {
+        const decoded = jwt.verify(token, jwtSecret);
+        req.user = {
+          userId: decoded.userId || decoded.id,
+          email: decoded.email,
+          name: decoded.name
+        };
+      }
     }
   } catch (err) {
     // Ignore error for optional auth

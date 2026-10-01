@@ -73,5 +73,7 @@ def get_model_info(symbol: str):
         raise HTTPException(status_code=500, detail=f"Failed to read model metadata: {str(e)}")
 
 if __name__ == '__main__':
-    # Default port 8000
-    uvicorn.run("ml_api:app", host="127.0.0.1", port=8000, reload=True)
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("ml_api:app", host=host, port=port, reload=False)
+

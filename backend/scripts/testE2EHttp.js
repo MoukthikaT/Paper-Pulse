@@ -216,10 +216,11 @@ async function runE2ETests() {
       headers: { 'Authorization': `Bearer ${tokenA}` }
     });
     const portData = await portRes.json();
+    const holdingsA = portData.data.holdings || portData.data || [];
     assert(portRes.status === 200, 'GET /api/portfolio successful');
-    assert(portData.data.length === 1, 'User A has 1 active holding');
-    assert(portData.data[0].symbol === 'TCS', 'Holding symbol is TCS');
-    assert(portData.data[0].quantity === 10, 'Holding quantity is 10');
+    assert(holdingsA.length === 1, `User A has 1 active holding (Actual: ${holdingsA.length})`);
+    assert(holdingsA[0].symbol === 'TCS', 'Holding symbol is TCS');
+    assert(holdingsA[0].quantity === 10, 'Holding quantity is 10');
 
     // 13. Test GET /api/portfolio/:symbol
     const portSymRes = await fetch(`${BASE_URL}/api/portfolio/TCS`, {
@@ -236,8 +237,9 @@ async function runE2ETests() {
       headers: { 'Authorization': `Bearer ${tokenB}` }
     });
     const portBData = await portBRes.json();
+    const holdingsB = portBData.data.holdings || portBData.data || [];
     assert(portBRes.status === 200, 'GET /api/portfolio for User B successful');
-    assert(portBData.data.length === 0, "User B's portfolio is empty (isolated from User A)");
+    assert(holdingsB.length === 0, "User B's portfolio is empty (isolated from User A)");
 
     // User B tries to sell TCS shares (should fail since User B doesn't own any, even though User A owns 10!)
     const sellBRes = await fetch(`${BASE_URL}/api/trades/execute`, {

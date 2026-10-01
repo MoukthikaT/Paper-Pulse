@@ -23,7 +23,19 @@ class TradeController {
    */
   async executeManualTrade(req, res, next) {
     try {
-      const { symbol, action, quantity, price, signal } = req.body;
+      const { 
+        symbol, 
+        action, 
+        quantity, 
+        price, 
+        signal,
+        journalNotes,
+        strategyTag,
+        confidenceLevel,
+        expectedOutcome,
+        aiConfidence,
+        aiSignal
+      } = req.body;
       const userId = this._resolveUserId(req);
 
       const result = await tradingService.executeTrade({
@@ -33,7 +45,13 @@ class TradeController {
         quantity,
         price,
         signal: signal || action,
-        tradeType: 'MANUAL'
+        tradeType: 'MANUAL',
+        journalNotes: journalNotes || '',
+        strategyTag: strategyTag || 'Discretionary',
+        confidenceLevel: Number(confidenceLevel) || 3,
+        expectedOutcome: expectedOutcome || 'Bullish',
+        aiConfidence: Number(aiConfidence) || 0,
+        aiSignal: aiSignal || ''
       });
 
       const message = result.action === 'HOLD' 

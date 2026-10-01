@@ -1,20 +1,15 @@
+const mongoose = require('mongoose');
 const walletService = require('./walletService');
 const portfolioService = require('./portfolioService');
 const tradeHistoryService = require('./tradeHistoryService');
+const { isDbConnected } = require('../config/db');
 
 class TradingService {
   /**
    * Unified Trade Execution Engine for BUY, SELL, and HOLD actions.
-   * Handles both MANUAL and AUTOMATIC paper trades.
+   * Handles both MANUAL and AUTOMATIC paper trades with atomic transaction support.
    * 
    * @param {Object} tradePayload
-   * @param {string} tradePayload.userId
-   * @param {string} tradePayload.symbol
-   * @param {string} tradePayload.action - BUY | SELL | HOLD
-   * @param {number} tradePayload.quantity
-   * @param {number} tradePayload.price
-   * @param {string} [tradePayload.signal] - AI Signal string or BUY/SELL/HOLD
-   * @param {string} [tradePayload.tradeType] - MANUAL | AUTOMATIC
    */
   async executeTrade({
     userId = 'default_user',
@@ -23,7 +18,14 @@ class TradingService {
     quantity,
     price,
     signal,
-    tradeType = 'MANUAL'
+    tradeType = 'MANUAL',
+    journalNotes = '',
+    strategyTag = 'Discretionary',
+    confidenceLevel = 3,
+    expectedOutcome = 'Bullish',
+    reflectionNotes = '',
+    aiConfidence = 0,
+    aiSignal = ''
   }) {
     // 1. Input Normalization & Sanity Validation
     if (!action || !['BUY', 'SELL', 'HOLD'].includes(action.toUpperCase())) {
@@ -74,95 +76,217 @@ class TradingService {
     const totalValue = Math.round(numQuantity * numPrice * 100) / 100;
     const tradeSignal = signal || normalizedAction;
 
-    // 4. BUY Logic
-    if (normalizedAction === 'BUY') {
-      const hasBalance = await walletService.hasSufficientBalance(userId, totalValue);
-      if (!hasBalance) {
-        const error = new Error(`Insufficient wallet balance. Required: ₹${totalValue}`);
-        error.code = 'INSUFFICIENT_BALANCE';
-        throw error;
+    let session = null;
+    let useTransaction = false;
+
+    if (isDbConnected()) {
+      const topologyType = mongoose.connection.client?.topology?.description?.type;
+      const supportsTransactions = topologyType === 'ReplicaSetWithPrimary' || topologyType === 'Sharded';
+
+      if (supportsTransactions) {
+        try {
+          session = await mongoose.startSession();
+          session.startTransaction();
+          useTransaction = true;
+        } catch (err) {
+          if (session) {
+            try { await session.endSession(); } catch (e) {}
+            session = null;
+          }
+          useTransaction = false;
+        }
       }
-
-      // Deduct from wallet
-      const updatedWalletBalance = await walletService.deduct(userId, totalValue);
-
-      // Add/update holding in portfolio
-      const updatedHolding = await portfolioService.updateHoldingOnBuy(userId, cleanSymbol, numQuantity, numPrice);
-
-      // Create Trade History Record
-      const tradeRecord = await tradeHistoryService.createTradeRecord({
-        userId,
-        symbol: cleanSymbol,
-        action: 'BUY',
-        quantity: numQuantity,
-        price: numPrice,
-        totalValue,
-        signal: tradeSignal,
-        tradeType,
-        profitLoss: 0
-      });
-
-      return {
-        executed: true,
-        action: 'BUY',
-        tradeType,
-        symbol: cleanSymbol,
-        quantity: numQuantity,
-        price: numPrice,
-        totalValue,
-        walletBalance: updatedWalletBalance,
-        portfolioHolding: updatedHolding,
-        trade: tradeRecord
-      };
     }
 
-    // 5. SELL Logic
-    if (normalizedAction === 'SELL') {
-      const existingHolding = await portfolioService.getHolding(userId, cleanSymbol);
-      if (!existingHolding || existingHolding.quantity < numQuantity) {
-        const ownedQty = existingHolding ? existingHolding.quantity : 0;
-        const error = new Error(`Insufficient shares to sell. Owned: ${ownedQty}, Requested: ${numQuantity}`);
-        error.code = 'INSUFFICIENT_HOLDINGS';
-        throw error;
+    const sessionOptions = useTransaction && session ? { session } : {};
+
+    let walletModified = 0; // positive if deducted, negative if added
+    let previousHoldingSnapshot = null;
+    let holdingModified = false;
+
+    try {
+      // 4. BUY Logic
+      if (normalizedAction === 'BUY') {
+        const hasBalance = await walletService.hasSufficientBalance(userId, totalValue, sessionOptions);
+        if (!hasBalance) {
+          const error = new Error(`Insufficient wallet balance. Required: ₹${totalValue}`);
+          error.code = 'INSUFFICIENT_BALANCE';
+          throw error;
+        }
+
+        // Capture previous holding snapshot for non-transactional rollback compensation
+        const prev = await portfolioService.getHolding(userId, cleanSymbol, sessionOptions);
+        previousHoldingSnapshot = prev ? { quantity: prev.quantity, averagePurchasePrice: prev.averagePurchasePrice } : null;
+
+        // Deduct from wallet
+        const updatedWalletBalance = await walletService.deduct(userId, totalValue, sessionOptions);
+        walletModified = totalValue;
+
+        // Add/update holding in portfolio
+        const updatedHolding = await portfolioService.updateHoldingOnBuy(userId, cleanSymbol, numQuantity, numPrice, sessionOptions);
+        holdingModified = true;
+
+        // Create Trade History Record
+        const tradeRecord = await tradeHistoryService.createTradeRecord({
+          userId,
+          symbol: cleanSymbol,
+          action: 'BUY',
+          quantity: numQuantity,
+          price: numPrice,
+          totalValue,
+          signal: tradeSignal,
+          tradeType,
+          profitLoss: 0,
+          journalNotes,
+          strategyTag,
+          confidenceLevel,
+          expectedOutcome,
+          reflectionNotes,
+          aiConfidence,
+          aiSignal
+        }, sessionOptions);
+
+        if (useTransaction && session) {
+          await session.commitTransaction();
+        }
+
+        return {
+          executed: true,
+          action: 'BUY',
+          tradeType,
+          symbol: cleanSymbol,
+          quantity: numQuantity,
+          price: numPrice,
+          totalValue,
+          walletBalance: updatedWalletBalance,
+          portfolioHolding: updatedHolding,
+          trade: tradeRecord
+        };
       }
 
-      // Calculate realized P/L and update portfolio
-      const { holding: updatedHolding, realizedPL } = await portfolioService.updateHoldingOnSell(
-        userId,
-        cleanSymbol,
-        numQuantity,
-        numPrice
-      );
+      // 5. SELL Logic
+      if (normalizedAction === 'SELL') {
+        const existingHolding = await portfolioService.getHolding(userId, cleanSymbol, sessionOptions);
+        if (!existingHolding || existingHolding.quantity < numQuantity) {
+          const ownedQty = existingHolding ? existingHolding.quantity : 0;
+          const error = new Error(`Insufficient shares to sell. Owned: ${ownedQty}, Requested: ${numQuantity}`);
+          error.code = 'INSUFFICIENT_HOLDINGS';
+          throw error;
+        }
 
-      // Add sale proceeds to wallet
-      const updatedWalletBalance = await walletService.add(userId, totalValue);
+        previousHoldingSnapshot = { quantity: existingHolding.quantity, averagePurchasePrice: existingHolding.averagePurchasePrice };
 
-      // Create Trade History Record
-      const tradeRecord = await tradeHistoryService.createTradeRecord({
-        userId,
-        symbol: cleanSymbol,
-        action: 'SELL',
-        quantity: numQuantity,
-        price: numPrice,
-        totalValue,
-        signal: tradeSignal,
-        tradeType,
-        profitLoss: realizedPL
-      });
+        // Calculate realized P/L and update portfolio
+        const { holding: updatedHolding, realizedPL } = await portfolioService.updateHoldingOnSell(
+          userId,
+          cleanSymbol,
+          numQuantity,
+          numPrice,
+          sessionOptions
+        );
+        holdingModified = true;
 
-      return {
-        executed: true,
-        action: 'SELL',
-        tradeType,
-        symbol: cleanSymbol,
-        quantity: numQuantity,
-        price: numPrice,
-        totalValue,
-        realizedProfitLoss: realizedPL,
-        walletBalance: updatedWalletBalance,
-        portfolioHolding: updatedHolding,
-        trade: tradeRecord
-      };
+        // Add sale proceeds to wallet
+        const updatedWalletBalance = await walletService.add(userId, totalValue, sessionOptions);
+        walletModified = -totalValue;
+
+        // Create Trade History Record
+        const tradeRecord = await tradeHistoryService.createTradeRecord({
+          userId,
+          symbol: cleanSymbol,
+          action: 'SELL',
+          quantity: numQuantity,
+          price: numPrice,
+          totalValue,
+          signal: tradeSignal,
+          tradeType,
+          profitLoss: realizedPL,
+          journalNotes,
+          strategyTag,
+          confidenceLevel,
+          expectedOutcome,
+          reflectionNotes,
+          aiConfidence,
+          aiSignal
+        }, sessionOptions);
+
+        if (useTransaction && session) {
+          await session.commitTransaction();
+        }
+
+        return {
+          executed: true,
+          action: 'SELL',
+          tradeType,
+          symbol: cleanSymbol,
+          quantity: numQuantity,
+          price: numPrice,
+          totalValue,
+          realizedProfitLoss: realizedPL,
+          walletBalance: updatedWalletBalance,
+          portfolioHolding: updatedHolding,
+          trade: tradeRecord
+        };
+      }
+    } catch (error) {
+      if (useTransaction && session) {
+        try {
+          await session.abortTransaction();
+        } catch (abortErr) {
+          console.warn(`[TradingService] Failed to abort transaction: ${abortErr.message}`);
+        }
+      } else {
+        // Compensating rollback for standalone/in-memory environments
+        try {
+          if (walletModified > 0) {
+            // Restore deducted funds
+            await walletService.add(userId, walletModified);
+          } else if (walletModified < 0) {
+            // Revert credited sale proceeds
+            await walletService.deduct(userId, Math.abs(walletModified));
+          }
+
+          if (holdingModified && previousHoldingSnapshot) {
+            if (isDbConnected()) {
+              const Portfolio = require('../models/Portfolio');
+              await Portfolio.findOneAndUpdate(
+                { userId, symbol: cleanSymbol },
+                {
+                  quantity: previousHoldingSnapshot.quantity,
+                  averagePurchasePrice: previousHoldingSnapshot.averagePurchasePrice,
+                  totalInvested: Math.round(previousHoldingSnapshot.quantity * previousHoldingSnapshot.averagePurchasePrice * 100) / 100
+                }
+              );
+            } else {
+              portfolioService.inMemoryPortfolios.set(`${userId}_${cleanSymbol}`, {
+                id: `hld_${userId}_${cleanSymbol}`,
+                userId,
+                symbol: cleanSymbol,
+                quantity: previousHoldingSnapshot.quantity,
+                averagePurchasePrice: previousHoldingSnapshot.averagePurchasePrice,
+                totalInvested: Math.round(previousHoldingSnapshot.quantity * previousHoldingSnapshot.averagePurchasePrice * 100) / 100
+              });
+            }
+          } else if (holdingModified && !previousHoldingSnapshot) {
+            // New holding created that should be deleted
+            if (isDbConnected()) {
+              const Portfolio = require('../models/Portfolio');
+              await Portfolio.deleteOne({ userId, symbol: cleanSymbol });
+            } else {
+              portfolioService.inMemoryPortfolios.delete(`${userId}_${cleanSymbol}`);
+            }
+          }
+        } catch (compensationErr) {
+          console.error(`[TradingService] Compensation error during trade rollback: ${compensationErr.message}`);
+        }
+      }
+      throw error;
+    } finally {
+      if (session) {
+        try {
+          session.endSession();
+        } catch (e) {}
+      }
     }
   }
 }

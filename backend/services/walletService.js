@@ -12,13 +12,14 @@ class WalletService {
   /**
    * Get current balance for a user
    */
-  async getBalance(userId = 'default_user') {
+  async getBalance(userId = 'default_user', options = {}) {
     if (isDbConnected()) {
-      let wallet = await Wallet.findOne({ userId });
+      let wallet = await Wallet.findOne({ userId }).session(options.session || null);
       if (!wallet) {
         // Automatically initialize wallet if it doesn't exist yet
         const initial = this._getInitialBalance();
-        wallet = await Wallet.create({ userId, balance: initial });
+        const created = await Wallet.create([{ userId, balance: initial }], { session: options.session });
+        wallet = created[0];
       }
       return wallet.balance;
     }
@@ -30,28 +31,28 @@ class WalletService {
   /**
    * Check if user has sufficient balance
    */
-  async hasSufficientBalance(userId = 'default_user', amount = 0) {
-    const balance = await this.getBalance(userId);
+  async hasSufficientBalance(userId = 'default_user', amount = 0, options = {}) {
+    const balance = await this.getBalance(userId, options);
     return balance >= amount;
   }
 
   /**
    * Deduct amount from user wallet
    */
-  async deduct(userId = 'default_user', amount = 0) {
+  async deduct(userId = 'default_user', amount = 0, options = {}) {
     if (amount <= 0) {
       throw new Error('Deduction amount must be greater than zero');
     }
 
     if (isDbConnected()) {
       // Auto-initialize wallet if it doesn't exist
-      await this.getBalance(userId);
+      await this.getBalance(userId, options);
 
       // Perform atomic decrement while checking that balance remains >= amount
       const wallet = await Wallet.findOneAndUpdate(
         { userId, balance: { $gte: amount } },
         { $inc: { balance: -amount } },
-        { new: true }
+        { new: true, session: options.session || null }
       );
 
       if (!wallet) {
@@ -78,19 +79,19 @@ class WalletService {
   /**
    * Add amount to user wallet
    */
-  async add(userId = 'default_user', amount = 0) {
+  async add(userId = 'default_user', amount = 0, options = {}) {
     if (amount <= 0) {
       throw new Error('Amount to add must be greater than zero');
     }
 
     if (isDbConnected()) {
       // Auto-initialize wallet if it doesn't exist
-      await this.getBalance(userId);
+      await this.getBalance(userId, options);
 
       const wallet = await Wallet.findOneAndUpdate(
         { userId },
         { $inc: { balance: amount } },
-        { new: true }
+        { new: true, session: options.session || null }
       );
 
       if (!wallet) {

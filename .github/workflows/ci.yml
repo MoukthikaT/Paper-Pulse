@@ -1,0 +1,87 @@
+name: PaperPulse CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    name: Backend Lint & Integration Tests
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Setup Python for ML Service
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/ml/requirements.txt
+
+      - name: Install ML Dependencies
+        working-directory: ./backend/ml
+        run: pip install -r requirements.txt
+
+      - name: Run Background ML Service
+        working-directory: ./backend/ml
+        run: |
+          python -m uvicorn api.ml_api:app --host 127.0.0.1 --port 8000 &
+          sleep 3
+
+      - name: Run Backend Integration & Unit Test Suite (157 Tests)
+        working-directory: ./backend
+        env:
+          NODE_ENV: test
+          MONGODB_URI: mongodb://127.0.0.1:27017/paper_pulse_test
+          JWT_SECRET: test_ci_github_actions_super_secure_secret_key_2026
+          ML_SERVICE_URL: http://127.0.0.1:8000
+          SEED_DEMO_USER: false
+        run: npm test
+
+  frontend-build:
+    name: Frontend Lint & Production Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run Frontend Linter
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Run Frontend Production Build
+        working-directory: ./frontend
+        run: npm run build

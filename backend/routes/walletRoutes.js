@@ -12,4 +12,7 @@ router.get('/', (req, res, next) => walletController.getWalletBalance(req, res, 
 // POST /api/wallet/reset - Reset authenticated user's wallet balance (for testing/dev)
 router.post('/reset', (req, res, next) => walletController.resetWalletBalance(req, res, next));
 
+// POST /api/wallet/add-funds - Add virtual capital or rewards to user's wallet
+router.post('/add-funds', (req, res, next) => walletController.addFunds(req, res, next));
+
 module.exports = router;
