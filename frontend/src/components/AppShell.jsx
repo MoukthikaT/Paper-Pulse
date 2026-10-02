@@ -201,7 +201,7 @@ const AppShell = ({ children, walletBalance = 100000, onWalletUpdate }) => {
             </div>
 
             <button 
-              onClick={() => { sounds.playTick(); logout(); }}
+              onClick={() => { sounds.playTick(); logout(); navigate('/login'); }}
               style={{ padding: '0.35rem', color: 'var(--text-secondary)' }}
               title="Logout"
             >
@@ -291,7 +291,7 @@ const AppShell = ({ children, walletBalance = 100000, onWalletUpdate }) => {
               </nav>
 
               <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
-                <button onClick={logout} className="btn-outline" style={{ width: '100%' }}>
+                <button onClick={() => { logout(); navigate('/login'); }} className="btn-outline" style={{ width: '100%' }}>
                   <LogOut size={16} /> Logout
                 </button>
               </div>
