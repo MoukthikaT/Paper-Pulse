@@ -10,29 +10,32 @@ const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api
 const CompareStocks = () => {
   const [stocks, setStocks] = useState([]);
   const [stockA, setStockA] = useState('TCS');
-  const [stockB, setStockB] = useState('INFY');
+  const [stockB, setStockB] = useState('INFOSYS');
   const [comparisonData, setComparisonData] = useState(null);
   const [historyA, setHistoryA] = useState([]);
   const [historyB, setHistoryB] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    axios.get(`${API_BASE}/stocks`).then(res => setStocks(res.data.data || [])).catch(console.error);
-    handleCompare();
+    axios.get(`${API_BASE}/stocks`).then(res => {
+      const syms = res.data.data || [];
+      setStocks(syms);
+      if (syms.length >= 2) {
+        setStockA(syms[0]);
+        setStockB(syms[1]);
+        fetchComparison(syms[0], syms[1]);
+      }
+    }).catch(console.error);
   }, []);
 
-  const handleCompare = () => {
-    if (stockA === stockB) {
-      alert("Please select two distinct stocks to compare.");
-      return;
-    }
-    sounds.playTick();
+  const fetchComparison = (symA, symB) => {
+    if (!symA || !symB || symA === symB) return;
     setLoading(true);
 
     Promise.all([
-      axios.get(`${API_BASE}/stocks/compare?symbols=${stockA},${stockB}`),
-      axios.get(`${API_BASE}/stocks/${stockA}/history?limit=30`),
-      axios.get(`${API_BASE}/stocks/${stockB}/history?limit=30`)
+      axios.get(`${API_BASE}/stocks/compare?symbols=${symA},${symB}`),
+      axios.get(`${API_BASE}/stocks/${symA}/history?limit=30`),
+      axios.get(`${API_BASE}/stocks/${symB}/history?limit=30`)
     ])
     .then(([compRes, histARes, histBRes]) => {
       setComparisonData(compRes.data.data);
@@ -44,6 +47,15 @@ const CompareStocks = () => {
       console.error(err);
       setLoading(false);
     });
+  };
+
+  const handleCompare = () => {
+    if (stockA === stockB) {
+      alert("Please select two distinct stocks to compare.");
+      return;
+    }
+    sounds.playTick();
+    fetchComparison(stockA, stockB);
   };
 
   // Normalized rebased-to-100 chart data for fair relative comparison

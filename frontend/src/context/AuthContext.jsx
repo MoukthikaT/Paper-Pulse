@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
@@ -8,9 +8,24 @@ export const useAuth = () => useContext(AuthContext);
 const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [token, setToken] = useState(() => localStorage.getItem('token') || null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/auth/me`);
+      setUser(res.data.data.user);
+    } catch (err) {
+      console.error(err);
+      setToken(null);
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['Authorization'];
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (token) {
@@ -23,33 +38,28 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setLoading(false);
     }
-  }, [token]);
-
-  const fetchUser = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/auth/me`);
-      setUser(res.data.data.user);
-    } catch (err) {
-      console.error(err);
-      setToken(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [token, fetchUser]);
 
   const login = async (email, password) => {
     const res = await axios.post(`${API_BASE}/auth/login`, { email, password });
-    setToken(res.data.data.token);
+    const receivedToken = res.data.data.token;
+    axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
+    localStorage.setItem('token', receivedToken);
+    setToken(receivedToken);
+    setUser(res.data.data.user);
     return res.data;
   };
 
   const register = async (name, email, password) => {
-    const res = await axios.post(`${API_BASE}/auth/register`, { name, email, password });
-    return res.data;
+    await axios.post(`${API_BASE}/auth/register`, { name, email, password });
+    return await login(email, password);
   };
 
   const logout = () => {
+    delete axios.defaults.headers.common['Authorization'];
+    localStorage.removeItem('token');
     setToken(null);
+    setUser(null);
   };
 
   return (

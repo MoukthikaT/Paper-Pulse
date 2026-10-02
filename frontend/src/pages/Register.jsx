@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, User, Lock, Mail, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { UserPlus, User, Lock, Mail, Sparkles, ShieldCheck, Zap, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 
 const Register = () => {
@@ -11,6 +11,7 @@ const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -33,126 +34,189 @@ const Register = () => {
 
   return (
     <div className="grid-bg auth-page-container">
-      {/* Branding Section */}
-      <div className="auth-branding-section">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          style={{ display: 'inline-flex', marginBottom: '1.25rem' }}
-        >
+      {/* Left Hero / Branding Section */}
+      <motion.div 
+        className="auth-branding-section"
+        initial={{ opacity: 0, x: -30 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+      >
+        <div className="auth-branding-badge">
+          <Sparkles size={14} /> Instant Virtual Capital
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <img 
             src="/logo.png" 
             alt="PaperPulse Logo" 
-            style={{ width: 'clamp(70px, 12vw, 96px)', height: 'clamp(70px, 12vw, 96px)', borderRadius: '50%', boxShadow: '0 0 35px var(--accent-pink-glow)' }} 
+            style={{ 
+              width: '56px', 
+              height: '56px', 
+              borderRadius: '50%', 
+              boxShadow: '0 0 30px var(--accent-pink-glow)',
+              border: '2px solid rgba(236, 72, 153, 0.4)'
+            }} 
           />
-        </motion.div>
+          <h1 style={{ 
+            fontSize: 'clamp(2.4rem, 4.5vw, 3.4rem)', 
+            fontWeight: 800, 
+            margin: 0, 
+            background: 'linear-gradient(135deg, var(--accent-pink), var(--accent-cyan))', 
+            WebkitBackgroundClip: 'text', 
+            WebkitTextFillColor: 'transparent', 
+            letterSpacing: '-1.5px',
+            lineHeight: 1
+          }}>
+            PaperPulse
+          </h1>
+        </div>
 
-        <h1 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.2rem)', fontWeight: 800, margin: '0 0 0.75rem 0', background: 'linear-gradient(135deg, var(--accent-pink), var(--accent-cyan))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-1px' }}>
-          PaperPulse
-        </h1>
-
-        <p style={{ fontSize: 'clamp(0.92rem, 2vw, 1.05rem)', color: 'var(--text-secondary)', maxWidth: '460px', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-          Receive ₹1,00,000 in virtual capital upon signup. Master technical charts, AI signals, and portfolio risk free from market anxiety.
+        <p style={{ 
+          fontSize: 'clamp(0.95rem, 1.8vw, 1.1rem)', 
+          color: 'var(--text-secondary)', 
+          maxWidth: '480px', 
+          lineHeight: 1.6, 
+          marginBottom: '2rem' 
+        }}>
+          Join thousands of simulated traders mastering price action, risk controls, and automated algorithmic strategies with real historical datasets.
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxWidth: '380px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-            <div style={{ padding: '0.35rem', background: 'rgba(16,185,129,0.15)', borderRadius: '50%' }}>
-              <Zap size={14} color="var(--accent-green)" />
+        {/* Feature Pills */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxWidth: '440px', marginBottom: '2rem' }}>
+          <div className="auth-feature-pill">
+            <div style={{ padding: '0.4rem', background: 'rgba(16,185,129,0.15)', borderRadius: '50%', color: 'var(--accent-green)', display: 'flex' }}>
+              <Zap size={16} />
             </div>
-            <span>Instant ₹1,00,000 Virtual Capital Allocation</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>₹1,00,000 Starting Wallet</div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>Instantly credited to your sandbox portfolio</div>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-            <div style={{ padding: '0.35rem', background: 'rgba(236,72,153,0.15)', borderRadius: '50%' }}>
-              <Sparkles size={14} color="var(--accent-pink)" />
+
+          <div className="auth-feature-pill">
+            <div style={{ padding: '0.4rem', background: 'rgba(236,72,153,0.15)', borderRadius: '50%', color: 'var(--accent-pink)', display: 'flex' }}>
+              <Sparkles size={16} />
             </div>
-            <span>Multi-Theme Futuristic Trading Terminal</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>Custom Fintech Themes</div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>Cyber Neon, Bloomberg Terminal, Tokyo Sapphire & Light</div>
+            </div>
+          </div>
+
+          <div className="auth-feature-pill">
+            <div style={{ padding: '0.4rem', background: 'rgba(6,182,212,0.15)', borderRadius: '50%', color: 'var(--accent-cyan)', display: 'flex' }}>
+              <ShieldCheck size={16} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>No Real Money Required</div>
+              <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>Safe, risk-free educational environment</div>
+            </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Auth Form Section */}
+      {/* Right Form Section */}
       <div className="auth-form-section">
         <motion.div 
-          className="glass-panel auth-card"
-          initial={{ opacity: 0, y: 20 }}
+          className="auth-card"
+          initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 120, damping: 20 }}
         >
-          <div>
-            <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.65rem', textAlign: 'center', fontWeight: 800 }}>Create Account</h2>
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', margin: 0, fontSize: '0.85rem' }}>
+          <div style={{ textAlign: 'center' }}>
+            <h2 style={{ margin: '0 0 0.35rem 0', fontSize: '1.75rem', fontWeight: 800 }}>Create Account</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.88rem' }}>
               Start your simulated market journey today
             </p>
           </div>
           
           {error && (
-            <div style={{ color: 'var(--accent-red)', background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.3)', padding: '0.65rem 1rem', borderRadius: '0.5rem', fontSize: '0.82rem', textAlign: 'center' }}>
-              {error}
+            <div className="auth-error-alert">
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                <User size={14} /> Full Name
+              <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 500 }}>
+                Full Name
               </label>
-              <input 
-                type="text" 
-                className="input-field" 
-                style={{ width: '100%' }}
-                placeholder="Alex Morgan"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+              <div className="auth-input-group">
+                <span className="auth-input-icon-left">
+                  <User size={16} />
+                </span>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Alex Morgan"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                <Mail size={14} /> Email Address
+              <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 500 }}>
+                Email Address
               </label>
-              <input 
-                type="email" 
-                className="input-field" 
-                style={{ width: '100%' }}
-                placeholder="alex@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div className="auth-input-group">
+                <span className="auth-input-icon-left">
+                  <Mail size={16} />
+                </span>
+                <input 
+                  type="email" 
+                  className="input-field" 
+                  placeholder="alex@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                <Lock size={14} /> Password
+              <label style={{ display: 'block', marginBottom: '0.4rem', color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 500 }}>
+                Password
               </label>
-              <input 
-                type="password" 
-                className="input-field" 
-                style={{ width: '100%' }}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="auth-input-group">
+                <span className="auth-input-icon-left">
+                  <Lock size={16} />
+                </span>
+                <input 
+                  type={showPassword ? 'text' : 'password'} 
+                  className="input-field" 
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="auth-input-btn-right"
+                  onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
 
             <motion.button 
-              whileHover={{ scale: 1.02 }} 
-              whileTap={{ scale: 0.98 }} 
+              whileHover={{ scale: 1.01 }} 
+              whileTap={{ scale: 0.99 }} 
               type="submit" 
               className="btn-primary" 
               disabled={loading}
-              style={{ marginTop: '0.25rem', width: '100%', height: '44px' }}
+              style={{ marginTop: '0.35rem', width: '100%', height: '46px', fontSize: '0.95rem' }}
             >
-              <UserPlus size={16} />
-              {loading ? 'Creating Account...' : 'Get Started'}
+              <UserPlus size={17} />
+              {loading ? 'Creating Account...' : 'Get Started Free'}
             </motion.button>
           </form>
 
-          <p style={{ textAlign: 'center', fontSize: '0.84rem', color: 'var(--text-secondary)', margin: 0 }}>
+          <p style={{ textAlign: 'center', fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0 }}>
             Already have an account? <Link to="/login" style={{ color: 'var(--accent-pink)', fontWeight: 600 }}>Sign In</Link>
           </p>
         </motion.div>

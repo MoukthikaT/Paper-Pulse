@@ -33,10 +33,16 @@ const TradePage = () => {
   const [executingTrade, setExecutingTrade] = useState(false);
   const [appliedQuantity, setAppliedQuantity] = useState(null);
 
+  const fetchUserData = React.useCallback(() => {
+    axios.get(`${API_BASE}/wallet`)
+      .then(res => setWallet({ balance: res.data.data.balance }))
+      .catch(console.error);
+  }, []);
+
   useEffect(() => {
     axios.get(`${API_BASE}/stocks`).then(res => setStocks(res.data.data || [])).catch(console.error);
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
   useEffect(() => {
     if (selectedStock) {
@@ -71,12 +77,6 @@ const TradePage = () => {
       });
     }
   }, [selectedStock]);
-
-  const fetchUserData = () => {
-    axios.get(`${API_BASE}/wallet`)
-      .then(res => setWallet({ balance: res.data.data.balance }))
-      .catch(console.error);
-  };
 
   const handleExecuteConfirmedTrade = async (confirmedDetails) => {
     setExecutingTrade(true);

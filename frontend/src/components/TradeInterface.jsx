@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { TrendingUp, CheckCircle2, AlertCircle, Zap, ShieldAlert, Cpu } from 'lucide-react';

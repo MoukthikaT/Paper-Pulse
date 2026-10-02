@@ -32,6 +32,26 @@ const Dashboard = () => {
   const [tradeActionLoading, setTradeActionLoading] = useState(false);
   const [selectedPosition, setSelectedPosition] = useState(null);
 
+  const fetchUserData = React.useCallback(() => {
+    axios.get(`${API_BASE}/wallet`)
+      .then(res => setWallet({ balance: res.data.data.balance }))
+      .catch(console.error);
+
+    axios.get(`${API_BASE}/portfolio`)
+      .then(res => {
+        setPortfolio({
+          holdings: res.data.data.holdings || [],
+          totalValue: res.data.data.totalValue || 0,
+          totalReturn: res.data.data.totalReturn || 0
+        });
+      })
+      .catch(console.error);
+
+    axios.get(`${API_BASE}/trades`)
+      .then(res => setTradeHistory(res.data.data || []))
+      .catch(console.error);
+  }, []);
+
   useEffect(() => {
     // Fetch available stocks
     axios.get(`${API_BASE}/stocks`).then(res => {
@@ -66,7 +86,7 @@ const Dashboard = () => {
     }).catch(console.error);
 
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
   useEffect(() => {
     if (selectedStock) {
@@ -100,26 +120,6 @@ const Dashboard = () => {
       });
     }
   }, [selectedStock]);
-
-  const fetchUserData = () => {
-    axios.get(`${API_BASE}/wallet`)
-      .then(res => setWallet({ balance: res.data.data.balance }))
-      .catch(console.error);
-
-    axios.get(`${API_BASE}/portfolio`)
-      .then(res => {
-        setPortfolio({
-          holdings: res.data.data.holdings || [],
-          totalValue: res.data.data.totalValue || 0,
-          totalReturn: res.data.data.totalReturn || 0
-        });
-      })
-      .catch(console.error);
-
-    axios.get(`${API_BASE}/trades`)
-      .then(res => setTradeHistory(res.data.data || []))
-      .catch(console.error);
-  };
 
   const handleExecuteConfirmedTrade = async (confirmedDetails) => {
     setTradeActionLoading(true);
