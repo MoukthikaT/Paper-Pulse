@@ -5,8 +5,33 @@ const { isDbConnected } = require('../config/db');
 
 class AuthService {
   constructor() {
-    // In-memory fallback repository when MongoDB is not connected
+    // In-memory fallback repository only when MongoDB is explicitly not connected (e.g. lightweight isolated tests)
     this.inMemoryUsers = new Map();
+  }
+
+  /**
+   * Centralized cryptographic JWT token generator
+   */
+  generateToken({ userId, id, email, name }) {
+    const uid = userId || id;
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      const err = new Error('JWT_SECRET environment variable is required');
+      err.code = 'CONFIG_ERROR';
+      throw err;
+    }
+    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
+
+    return jwt.sign(
+      {
+        userId: uid,
+        id: uid,
+        email,
+        name
+      },
+      jwtSecret,
+      { expiresIn: jwtExpiresIn }
+    );
   }
 
   /**
@@ -40,18 +65,18 @@ class AuthService {
       throw err;
     }
 
-    // 2. Duplicate Check & Database Insertion
+    // 2. Database Insertion (when MongoDB is connected)
     if (isDbConnected()) {
+      const existing = await User.findOne({ email: normalizedEmail });
+      if (existing) {
+        const err = new Error('User with this email already exists');
+        err.code = 'DUPLICATE_EMAIL';
+        throw err;
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
       try {
-        const existing = await User.findOne({ email: normalizedEmail });
-        if (existing) {
-          const err = new Error('User with this email already exists');
-          err.code = 'DUPLICATE_EMAIL';
-          throw err;
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-
         const newUser = await User.create({
           name: name.trim(),
           email: normalizedEmail,
@@ -72,17 +97,16 @@ class AuthService {
           createdAt: newUser.createdAt
         };
       } catch (err) {
-        if (err.code === 'DUPLICATE_EMAIL') throw err;
         if (err.code === 11000) {
           const dupErr = new Error('User with this email already exists');
           dupErr.code = 'DUPLICATE_EMAIL';
           throw dupErr;
         }
-        console.warn(`[AuthService] MongoDB error (${err.message}). Falling back to in-memory store.`);
+        throw err;
       }
     }
 
-    // In-Memory Fallback Mode
+    // In-Memory Mode (Only when MongoDB is disconnected)
     if (this.inMemoryUsers.has(normalizedEmail)) {
       const err = new Error('User with this email already exists');
       err.code = 'DUPLICATE_EMAIL';
@@ -132,14 +156,8 @@ class AuthService {
     let foundUser = null;
 
     if (isDbConnected()) {
-      try {
-        foundUser = await User.findOne({ email: normalizedEmail });
-      } catch (err) {
-        console.warn(`[AuthService] MongoDB lookup failed (${err.message}). Using in-memory fallback.`);
-      }
-    }
-
-    if (!foundUser) {
+      foundUser = await User.findOne({ email: normalizedEmail });
+    } else {
       foundUser = this.inMemoryUsers.get(normalizedEmail);
     }
 
@@ -157,24 +175,11 @@ class AuthService {
     }
 
     const userId = foundUser._id ? foundUser._id.toString() : foundUser.id;
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      const err = new Error('JWT_SECRET environment variable is required');
-      err.code = 'CONFIG_ERROR';
-      throw err;
-    }
-    const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
-
-    const token = jwt.sign(
-      {
-        userId,
-        id: userId,
-        email: foundUser.email,
-        name: foundUser.name
-      },
-      jwtSecret,
-      { expiresIn: jwtExpiresIn }
-    );
+    const token = this.generateToken({
+      userId,
+      email: foundUser.email,
+      name: foundUser.name
+    });
 
     return {
       user: {
