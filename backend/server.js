@@ -66,7 +66,7 @@ app.use('/api/stocks', stockRoutes);
 app.use('/api/ml', mlRoutes);
 
 // Base Health Check Route
-app.get('/health', async (req, res) => {
+const healthHandler = async (req, res) => {
   const dbConnected = isDbConnected();
   let mlServiceStatus = 'OFFLINE';
   try {
@@ -88,7 +88,10 @@ app.get('/health', async (req, res) => {
     mlService: mlServiceStatus,
     timestamp: new Date().toISOString()
   });
-});
+};
+
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 app.get('/', (req, res) => {
   return successResponse(res, 200, 'Paper Pulse Trading Engine API Server', {
