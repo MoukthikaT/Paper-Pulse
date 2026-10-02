@@ -14,8 +14,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy ML application code, scripts, models, and datasets
 COPY . .
-# Also copy CSV datasets for feature generation
-COPY ../data/csv /app/../data/csv
 
 EXPOSE 8000
 

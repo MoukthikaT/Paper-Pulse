@@ -29,7 +29,9 @@ app.add_middleware(
 )
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-datasets_dir = os.path.normpath(os.path.join(base_dir, '..', 'data', 'csv'))
+local_data_dir = os.path.normpath(os.path.join(base_dir, 'data', 'csv'))
+parent_data_dir = os.path.normpath(os.path.join(base_dir, '..', 'data', 'csv'))
+datasets_dir = local_data_dir if os.path.exists(local_data_dir) else parent_data_dir
 models_dir = os.path.normpath(os.path.join(base_dir, 'models', 'trained'))
 
 @app.get("/health")
