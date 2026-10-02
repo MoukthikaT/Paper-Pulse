@@ -37,15 +37,17 @@ const allowedOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || '
 app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
+    if (!origin) {
+      return callback(null, true);
+    }
     if (
-      !origin || 
-      allowedOrigins.includes('*') || 
       allowedOrigins.includes(origin) ||
+      origin === 'https://paper-pulse-gilt.vercel.app' ||
       origin.endsWith('.vercel.app') ||
       origin.includes('localhost') ||
       origin.includes('127.0.0.1')
     ) {
-      return callback(null, true);
+      return callback(null, origin);
     }
     return callback(new Error(`CORS policy: origin ${origin} is not allowed.`));
   },
