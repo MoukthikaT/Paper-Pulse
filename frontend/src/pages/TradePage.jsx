@@ -9,8 +9,7 @@ import TradeInterface from '../components/TradeInterface';
 import ExplainableSignalCard from '../components/ExplainableSignalCard';
 import TradePreviewModal from '../components/TradePreviewModal';
 import { sounds } from '../utils/soundEffects';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const TradePage = () => {
   const [searchParams] = useSearchParams();

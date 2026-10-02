@@ -4,6 +4,7 @@ import axios from 'axios';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import AppShell from './components/AppShell';
+import { API_BASE } from './config/api';
 
 // Eager load core dashboard
 import Dashboard from './pages/Dashboard';
@@ -41,8 +42,6 @@ const RouteLoadingSpinner = () => (
     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', letterSpacing: '0.4px' }}>Loading PaperPulse workspace...</span>
   </div>
 );
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();

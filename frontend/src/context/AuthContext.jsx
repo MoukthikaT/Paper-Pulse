@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export const useAuth = () => useContext(AuthContext);
 
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('token') || null);
@@ -51,7 +51,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (name, email, password) => {
-    await axios.post(`${API_BASE}/auth/register`, { name, email, password });
+    const res = await axios.post(`${API_BASE}/auth/register`, { name, email, password });
+    const payload = res.data?.data;
+    if (payload?.token) {
+      const receivedToken = payload.token;
+      axios.defaults.headers.common['Authorization'] = `Bearer ${receivedToken}`;
+      localStorage.setItem('token', receivedToken);
+      setToken(receivedToken);
+      setUser(payload.user || { id: payload.id || payload._id, name: payload.name, email: payload.email });
+      return res.data;
+    }
     return await login(email, password);
   };
 

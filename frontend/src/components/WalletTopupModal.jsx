@@ -4,8 +4,7 @@ import { X, PlusCircle, RotateCcw, Wallet, Sparkles, CheckCircle2 } from 'lucide
 import axios from 'axios';
 import { sounds } from '../utils/soundEffects';
 import { launchConfetti } from '../utils/confetti';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const WalletTopupModal = ({ isOpen, onClose, currentBalance, onUpdate }) => {
   const [amount, setAmount] = useState(25000);

@@ -9,8 +9,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { sounds } from '../utils/soundEffects';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 const COLORS = ['#ec4899', '#06b6d4', '#10b981', '#f59e0b', '#8b5cf6', '#3b82f6'];
 
 const PortfolioPage = () => {

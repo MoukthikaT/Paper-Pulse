@@ -6,8 +6,7 @@ import {
   TrendingUp, TrendingDown, HelpCircle, ArrowRight, Activity 
 } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const RiskLabPage = () => {
   const [stocks, setStocks] = useState([]);

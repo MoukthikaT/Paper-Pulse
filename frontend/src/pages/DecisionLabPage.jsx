@@ -9,8 +9,7 @@ import {
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
 import { sounds } from '../utils/soundEffects';
 import { launchConfetti } from '../utils/confetti';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const DecisionLabPage = () => {
   const [challenge, setChallenge] = useState(null);

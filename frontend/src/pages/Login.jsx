@@ -17,15 +17,27 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail) {
+      setError('Please enter your email address.');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password.');
+      return;
+    }
+
     setLoading(true);
     sounds.playTick();
     try {
-      await login(email, password);
+      await login(trimmedEmail, password);
       sounds.playSuccess();
       navigate('/');
     } catch (err) {
       sounds.playError();
-      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+      const serverMsg = err.response?.data?.message || err.message;
+      setError(serverMsg || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

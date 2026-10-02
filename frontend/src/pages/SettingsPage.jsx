@@ -7,8 +7,7 @@ import {
 } from 'lucide-react';
 import { useTheme, THEMES, THEME_CONFIGS } from '../context/ThemeContext';
 import { sounds } from '../utils/soundEffects';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const SettingsPage = () => {
   const { theme, setTheme, themeConfigs, soundEnabled, toggleSound } = useTheme();

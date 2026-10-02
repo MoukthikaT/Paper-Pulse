@@ -18,15 +18,33 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedName) {
+      setError('Please enter your full name.');
+      return;
+    }
+    if (!trimmedEmail || !/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password || password.length < 6) {
+      setError('Password must be at least 6 characters long.');
+      return;
+    }
+
     setLoading(true);
     sounds.playTick();
     try {
-      await register(name, email, password);
+      await register(trimmedName, trimmedEmail, password);
       sounds.playSuccess();
       navigate('/');
     } catch (err) {
       sounds.playError();
-      setError(err.response?.data?.message || 'Registration failed. Please check your details.');
+      const serverMsg = err.response?.data?.message || err.message;
+      setError(serverMsg || 'Registration failed. Please check your details.');
     } finally {
       setLoading(false);
     }

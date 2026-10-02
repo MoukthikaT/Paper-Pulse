@@ -58,10 +58,17 @@ class AuthService {
           password: hashedPassword
         });
 
+        const token = this.generateToken({
+          userId: newUser._id.toString(),
+          email: newUser.email,
+          name: newUser.name
+        });
+
         return {
           id: newUser._id.toString(),
           name: newUser.name,
           email: newUser.email,
+          token,
           createdAt: newUser.createdAt
         };
       } catch (err) {
@@ -96,10 +103,17 @@ class AuthService {
 
     this.inMemoryUsers.set(normalizedEmail, mockUser);
 
+    const token = this.generateToken({
+      userId: mockUser.id,
+      email: mockUser.email,
+      name: mockUser.name
+    });
+
     return {
       id: mockUser.id,
       name: mockUser.name,
       email: mockUser.email,
+      token,
       createdAt: mockUser.createdAt
     };
   }

@@ -4,8 +4,7 @@ import { Award, CheckCircle2, XCircle, Sparkles, X, ChevronRight, RotateCcw, Coi
 import axios from 'axios';
 import { sounds } from '../utils/soundEffects';
 import { launchConfetti } from '../utils/confetti';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const QUIZ_QUESTIONS = [
   {

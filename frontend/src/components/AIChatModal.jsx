@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { sounds } from '../utils/soundEffects';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const SUGGESTED_PROMPTS = [
   "What is P/E Ratio and why does it matter?",

@@ -13,8 +13,7 @@ import AutoPilotModal from '../components/AutoPilotModal';
 import MarketHeatmap from '../components/MarketHeatmap';
 import StrategyBacktester from '../components/StrategyBacktester';
 import { sounds } from '../utils/soundEffects';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const Dashboard = () => {
   const [wallet, setWallet] = useState({ balance: 100000 });

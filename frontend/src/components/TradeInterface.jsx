@@ -4,8 +4,7 @@ import axios from 'axios';
 import { TrendingUp, CheckCircle2, AlertCircle, Zap, ShieldAlert, Cpu } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 import { launchConfetti } from '../utils/confetti';
-
-const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`;
+import { API_BASE } from '../config/api';
 
 const TradeInterface = ({ stockData, walletBalance = 100000, onTrade, onOpenPreview, suggestedQuantity = null }) => {
   const [quantity, setQuantity] = useState(suggestedQuantity || 10);
